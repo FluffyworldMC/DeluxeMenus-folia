@@ -1,7 +1,9 @@
 package com.extendedclip.deluxemenus.requirement;
 
+import com.extendedclip.deluxemenus.DeluxeMenus;
 import com.extendedclip.deluxemenus.menu.MenuHolder;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
 public class IsNearRequirement extends Requirement {
 
@@ -17,12 +19,19 @@ public class IsNearRequirement extends Requirement {
 
   @Override
   public boolean evaluate(MenuHolder holder) {
-    if (holder.getViewer() == null) {
+    final Player viewer = holder.getViewer();
+    if (viewer == null) {
       return false;
     }
+
+    // Another region must not read this player's world or location.
+    if (DeluxeMenus.usesRegionScheduler() && !DeluxeMenus.getScheduler().isEntityThread(viewer)) {
+      return false;
+    }
+
     boolean withinRange = false;
-    if (holder.getViewer().getWorld().getName().equals(location.getWorld().getName())) {
-      withinRange = holder.getViewer().getLocation().distance(location) < distance;
+    if (viewer.getWorld().getName().equals(location.getWorld().getName())) {
+      withinRange = viewer.getLocation().distance(location) < distance;
     }
     return invert ? !withinRange : withinRange;
   }

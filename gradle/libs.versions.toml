@@ -14,6 +14,7 @@ papi = "2.12.3"
 score = "5.25.3.9"
 sig = "1.10.0"
 bstats = "3.2.1"
+universal-scheduler = "0.1.7"
 
 # Implementation
 nashorn = "15.7"
@@ -38,3 +39,4 @@ sig = { module = "io.github.valerashimchuck:simpleitemgenerator-api", version.re
 # Implementation
 nashorn = { module = "org.openjdk.nashorn:nashorn-core", version.ref = "nashorn" }
 bstats = { module = "org.bstats:bstats-bukkit", version.ref = "bstats" }
+universal-scheduler = { module = "com.github.Anon8281:UniversalScheduler", version.ref = "universal-scheduler" }

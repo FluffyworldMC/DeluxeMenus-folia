@@ -44,6 +44,7 @@ dependencies {
 
     implementation(libs.nashorn)
     implementation(libs.bstats)
+    implementation(libs.universal.scheduler)
 
     compileOnly("org.jetbrains:annotations:26.1.0")
 }
@@ -64,6 +65,7 @@ tasks {
         relocate("org.objectweb.asm", "com.extendedclip.deluxemenus.libs.asm")
         relocate("org.openjdk.nashorn", "com.extendedclip.deluxemenus.libs.nashorn")
         relocate("org.bstats", "com.extendedclip.deluxemenus.libs.bstats")
+        relocate("com.github.Anon8281.universalScheduler", "com.extendedclip.deluxemenus.universalScheduler")
         archiveFileName.set("DeluxeMenus-${rootProject.version}.jar")
     }
 

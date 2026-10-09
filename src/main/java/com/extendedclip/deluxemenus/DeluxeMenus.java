@@ -17,6 +17,8 @@ import com.extendedclip.deluxemenus.placeholder.Expansion;
 import com.extendedclip.deluxemenus.updatechecker.UpdateChecker;
 import com.extendedclip.deluxemenus.utils.DebugLevel;
 import com.extendedclip.deluxemenus.utils.Messages;
+import com.github.Anon8281.universalScheduler.UniversalScheduler;
+import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -44,6 +46,8 @@ public class DeluxeMenus extends JavaPlugin {
 
     private static final DebugLevel STACKTRACE_PRINT_LEVEL = DebugLevel.MEDIUM;
 
+    private static TaskScheduler scheduler;
+
     private PersistentMetaHandler persistentMetaHandler;
     private MenuItemMarker menuItemMarker;
     private EphemeralCooldownManager ephemeralCooldownManager;
@@ -58,6 +62,8 @@ public class DeluxeMenus extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        scheduler = UniversalScheduler.getScheduler(this);
+
         this.generalConfig.load();
 
         if (!hookIntoPlaceholderAPI()) {
@@ -95,17 +101,31 @@ public class DeluxeMenus extends JavaPlugin {
     public void onDisable() {
         Bukkit.getMessenger().unregisterOutgoingPluginChannel(this, "BungeeCord");
 
-        Bukkit.getScheduler().cancelTasks(this);
-
         Menu.unloadForShutdown(this);
 
         if (this.ephemeralCooldownManager != null) {
             this.ephemeralCooldownManager.clearAll();
         }
 
+        if (scheduler != null) {
+            scheduler.cancelTasks();
+            scheduler = null;
+        }
+
         itemHooks.clear();
 
         HandlerList.unregisterAll(this);
+    }
+
+    /**
+     * Folia and Canvas run player and world work on region threads. Paper, Spigot, and Bukkit keep the main thread.
+     */
+    public static boolean usesRegionScheduler() {
+        return UniversalScheduler.isFolia || UniversalScheduler.isCanvas;
+    }
+
+    public static @NotNull TaskScheduler getScheduler() {
+        return scheduler;
     }
 
     public Optional<ItemHook> getItemHook(String id) {

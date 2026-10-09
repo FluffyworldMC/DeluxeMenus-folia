@@ -3,14 +3,12 @@ package com.extendedclip.deluxemenus.menu;
 import com.extendedclip.deluxemenus.DeluxeMenus;
 import com.extendedclip.deluxemenus.menu.options.MenuOptions;
 import com.extendedclip.deluxemenus.utils.StringUtils;
-import org.bukkit.Bukkit;
+import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -29,8 +27,8 @@ public class MenuHolder implements InventoryHolder {
     private Player placeholderPlayer;
     private String menuName;
     private Set<MenuItem> activeItems;
-    private BukkitTask updateTask = null;
-    private BukkitTask refreshTask = null;
+    private MyScheduledTask updateTask = null;
+    private MyScheduledTask refreshTask = null;
     private Inventory inventory;
     private boolean updating;
     private boolean parsePlaceholdersInArguments;
@@ -55,7 +53,7 @@ public class MenuHolder implements InventoryHolder {
         return viewer.getName();
     }
 
-    public BukkitTask getUpdateTask() {
+    public MyScheduledTask getUpdateTask() {
         return updateTask;
     }
 
@@ -138,7 +136,7 @@ public class MenuHolder implements InventoryHolder {
 
         setUpdating(true);
 
-        Bukkit.getScheduler().runTaskAsynchronously(this.plugin, () -> {
+        final Runnable prepare = () -> {
 
             final Set<MenuItem> active = new HashSet<>();
 
@@ -176,7 +174,7 @@ public class MenuHolder implements InventoryHolder {
                 Menu.closeMenu(plugin, getViewer(), true);
             }
 
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            final Runnable apply = () -> {
 
                 boolean update = false;
 
@@ -212,8 +210,27 @@ public class MenuHolder implements InventoryHolder {
                 }
 
                 setUpdating(false);
-            });
-        });
+            };
+
+            if (DeluxeMenus.usesRegionScheduler()) {
+                apply.run();
+                return;
+            }
+
+            DeluxeMenus.getScheduler().runTask(getViewer(), apply);
+        };
+
+        if (DeluxeMenus.usesRegionScheduler()) {
+            if (DeluxeMenus.getScheduler().isEntityThread(viewer)) {
+                prepare.run();
+                return;
+            }
+
+            DeluxeMenus.getScheduler().runTask(viewer, prepare);
+            return;
+        }
+
+        DeluxeMenus.getScheduler().runTaskAsynchronously(prepare);
     }
 
     public void stopPlaceholderUpdate() {
@@ -241,16 +258,20 @@ public class MenuHolder implements InventoryHolder {
             stopRefreshTask();
         }
 
-        refreshTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                refreshMenu();
-            }
-        }.runTaskTimerAsynchronously(plugin, 20L,
-                20L * Menu.getMenuByName(menuName)
-                        .map(Menu::options)
-                        .map(MenuOptions::refreshInterval)
-                        .orElse(10));
+        final long period = 20L * Menu.getMenuByName(menuName)
+                .map(Menu::options)
+                .map(MenuOptions::refreshInterval)
+                .orElse(10);
+        if (period <= 0) {
+            return;
+        }
+
+        if (DeluxeMenus.usesRegionScheduler()) {
+            refreshTask = DeluxeMenus.getScheduler().runTaskTimer(viewer, this::refreshMenu, 20L, period);
+            return;
+        }
+
+        refreshTask = DeluxeMenus.getScheduler().runTaskTimerAsynchronously(this::refreshMenu, 20L, period);
     }
 
     public void startUpdatePlaceholdersTask() {
@@ -259,10 +280,15 @@ public class MenuHolder implements InventoryHolder {
             stopPlaceholderUpdate();
         }
 
-        updateTask = new BukkitRunnable() {
+        final long period = 20L * Menu.getMenuByName(menuName)
+                .map(Menu::options)
+                .map(MenuOptions::updateInterval)
+                .orElse(10);
+        if (period <= 0) {
+            return;
+        }
 
-            @Override
-            public void run() {
+        final Runnable tick = () -> {
 
                 if (updating) {
                     return;
@@ -315,13 +341,14 @@ public class MenuHolder implements InventoryHolder {
                         i.setAmount(amt);
                     }
                 }
-            }
+        };
 
-        }.runTaskTimerAsynchronously(plugin, 20L,
-                20L * Menu.getMenuByName(menuName)
-                        .map(Menu::options)
-                        .map(MenuOptions::updateInterval)
-                        .orElse(10));
+        if (DeluxeMenus.usesRegionScheduler()) {
+            updateTask = DeluxeMenus.getScheduler().runTaskTimer(viewer, tick, 20L, period);
+            return;
+        }
+
+        updateTask = DeluxeMenus.getScheduler().runTaskTimerAsynchronously(tick, 20L, period);
     }
 
     public boolean isUpdating() {

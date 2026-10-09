@@ -9,14 +9,14 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
-public class ClickActionTask extends BukkitRunnable {
+public class ClickActionTask implements Runnable {
 
     private final DeluxeMenus plugin;
     private final UUID uuid;
@@ -43,6 +43,18 @@ public class ClickActionTask extends BukkitRunnable {
         this.arguments = arguments;
         this.parsePlaceholdersInArguments = parsePlaceholdersInArguments;
         this.parsePlaceholdersAfterArguments = parsePlaceholdersAfterArguments;
+    }
+
+    /**
+     * Runs on the player's region. A delay of zero or less runs on the next tick.
+     */
+    public void schedule(@NotNull final Player player, final long delayTicks) {
+        if (delayTicks <= 0) {
+            DeluxeMenus.getScheduler().runTask(player, this);
+            return;
+        }
+
+        DeluxeMenus.getScheduler().runTaskLater(player, this, delayTicks);
     }
 
     @Override
@@ -482,25 +494,30 @@ public class ClickActionTask extends BukkitRunnable {
                     }
                 }
 
+                final Sound parsedSound = sound;
+                final String parsedSoundName = soundName;
+                final float parsedVolume = volume;
+                final float parsedPitch = pitch;
+
                 switch (actionType) {
                     case BROADCAST_WORLD_RAW_SOUND:
                         for (final Player broadcastTarget : player.getWorld().getPlayers()) {
-                            broadcastTarget.playSound(broadcastTarget.getLocation(), soundName, volume, pitch);
+                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(), parsedSoundName, parsedVolume, parsedPitch));
                         }
                         break;
 
                     case BROADCAST_RAW_SOUND:
                         for (final Player broadcastTarget : Bukkit.getOnlinePlayers()) {
-                            broadcastTarget.playSound(broadcastTarget.getLocation(), soundName, volume, pitch);
+                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(), parsedSoundName, parsedVolume, parsedPitch));
                         }
                         break;
 
                     case PLAY_RAW_SOUND:
-                        player.playSound(player.getLocation(), soundName, volume, pitch);
+                        playSoundFor(player, listener -> listener.playSound(listener.getLocation(), parsedSoundName, parsedVolume, parsedPitch));
                         break;
 
                     case BROADCAST_SOUND:
-                        if (sound == null) {
+                        if (parsedSound == null) {
                             plugin.debug(
                                     DebugLevel.HIGHEST,
                                     Level.WARNING,
@@ -509,12 +526,12 @@ public class ClickActionTask extends BukkitRunnable {
                             break;
                         }
                         for (final Player broadcastTarget : Bukkit.getOnlinePlayers()) {
-                            broadcastTarget.playSound(broadcastTarget.getLocation(), sound, volume, pitch);
+                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(), parsedSound, parsedVolume, parsedPitch));
                         }
                         break;
 
                     case BROADCAST_WORLD_SOUND:
-                        if (sound == null) {
+                        if (parsedSound == null) {
                             plugin.debug(
                                     DebugLevel.HIGHEST,
                                     Level.WARNING,
@@ -523,12 +540,12 @@ public class ClickActionTask extends BukkitRunnable {
                             break;
                         }
                         for (final Player broadcastTarget : player.getWorld().getPlayers()) {
-                            broadcastTarget.playSound(broadcastTarget.getLocation(), sound, volume, pitch);
+                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(), parsedSound, parsedVolume, parsedPitch));
                         }
                         break;
 
                     case PLAY_SOUND:
-                        if (sound == null) {
+                        if (parsedSound == null) {
                             plugin.debug(
                                     DebugLevel.HIGHEST,
                                     Level.WARNING,
@@ -536,7 +553,7 @@ public class ClickActionTask extends BukkitRunnable {
                             );
                             break;
                         }
-                        player.playSound(player.getLocation(), sound, volume, pitch);
+                        playSoundFor(player, listener -> listener.playSound(listener.getLocation(), parsedSound, parsedVolume, parsedPitch));
                         break;
                 }
                 break;
@@ -544,6 +561,16 @@ public class ClickActionTask extends BukkitRunnable {
             default:
                 break;
         }
+    }
+
+    private void playSoundFor(@NotNull final Player target, @NotNull final Consumer<Player> play) {
+        final Runnable task = () -> play.accept(target);
+        if (DeluxeMenus.getScheduler().isEntityThread(target)) {
+            task.run();
+            return;
+        }
+
+        DeluxeMenus.getScheduler().runTask(target, task);
     }
 
     private boolean isRaw(ActionType actionType) {

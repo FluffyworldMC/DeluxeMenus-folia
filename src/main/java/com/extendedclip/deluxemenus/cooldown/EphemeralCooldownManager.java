@@ -1,7 +1,6 @@
 package com.extendedclip.deluxemenus.cooldown;
 
 import com.extendedclip.deluxemenus.DeluxeMenus;
-import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
@@ -16,9 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * plugin is disabled or the server stops. They do survive a {@code /dm reload}. Anyone who needs a
  * cooldown to outlive a restart should use a dedicated cooldown plugin or temporary permissions.
  * <p>
- * Every method is safe to call from any thread. Requirements are evaluated off the main thread when
- * a menu is opened or refreshed, actions run on the main thread, and PlaceholderAPI may request a
- * value from either, so the backing maps are concurrent.
+ * Every method is safe to call from any thread. Requirements are evaluated off the server thread when
+ * a menu is opened or refreshed on Paper, actions run on the owning player thread, and PlaceholderAPI
+ * may request a value from either, so the backing maps are concurrent.
  */
 public class EphemeralCooldownManager {
 
@@ -124,7 +123,11 @@ public class EphemeralCooldownManager {
      * {@link DeluxeMenus#onDisable()}.
      */
     public void startSweepTask() {
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this::sweep, SWEEP_INTERVAL, SWEEP_INTERVAL);
+        if (SWEEP_INTERVAL <= 0) {
+            return;
+        }
+
+        DeluxeMenus.getScheduler().runTaskTimerAsynchronously(this::sweep, SWEEP_INTERVAL, SWEEP_INTERVAL);
     }
 
     private void sweep() {
