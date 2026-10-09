@@ -109,7 +109,8 @@ public class ClickActionTask implements Runnable {
                 break;
 
             case PLAYER:
-                dispatchOnGlobalThread(() -> {
+                // Canvas checks that the thread owns the player. The global region fails that check.
+                runOnEntityThread(player, () -> {
                     if (player.isOnline()) {
                         player.performCommand(executable);
                     }
@@ -566,6 +567,9 @@ public class ClickActionTask implements Runnable {
         }
     }
 
+    /**
+     * Console dispatch must run on the global tick thread. A player sender is rejected there.
+     */
     private void dispatchOnGlobalThread(@NotNull final Runnable dispatch) {
         if (!DeluxeMenus.usesRegionScheduler() || DeluxeMenus.getScheduler().isGlobalThread()) {
             dispatch.run();
@@ -573,6 +577,18 @@ public class ClickActionTask implements Runnable {
         }
 
         DeluxeMenus.getScheduler().runTask(dispatch);
+    }
+
+    /**
+     * Player command dispatch must run on the region that owns the player.
+     */
+    private void runOnEntityThread(@NotNull final Player target, @NotNull final Runnable task) {
+        if (!DeluxeMenus.usesRegionScheduler() || DeluxeMenus.getScheduler().isEntityThread(target)) {
+            task.run();
+            return;
+        }
+
+        DeluxeMenus.getScheduler().runTask(target, task);
     }
 
     private void playSoundFor(@NotNull final Player target, @NotNull final Consumer<Player> play) {
