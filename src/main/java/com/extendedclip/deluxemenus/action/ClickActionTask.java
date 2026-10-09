@@ -22,7 +22,8 @@ public class ClickActionTask implements Runnable {
     private final UUID uuid;
     private final ActionType actionType;
     private final String exec;
-    // Ugly hack to get around the fact that arguments are not available at task execution time
+    // Ugly hack to get around the fact that arguments are not available at task
+    // execution time
     private final Map<String, String> arguments;
     private final boolean parsePlaceholdersInArguments;
     private final boolean parsePlaceholdersAfterArguments;
@@ -34,8 +35,7 @@ public class ClickActionTask implements Runnable {
             @NotNull final String exec,
             @NotNull final Map<String, String> arguments,
             final boolean parsePlaceholdersInArguments,
-            final boolean parsePlaceholdersAfterArguments
-    ) {
+            final boolean parsePlaceholdersAfterArguments) {
         this.plugin = plugin;
         this.uuid = uuid;
         this.actionType = actionType;
@@ -69,7 +69,6 @@ public class ClickActionTask implements Runnable {
                 ? holder.get().getPlaceholderPlayer()
                 : player;
 
-
         final String executable = StringUtils.replacePlaceholdersAndArguments(
                 this.exec,
                 this.arguments,
@@ -83,19 +82,24 @@ public class ClickActionTask implements Runnable {
                     plugin.debug(DebugLevel.HIGHEST, Level.INFO, "Meta action not supported on this server version.");
                     break;
                 }
-                final PersistentMetaHandler.OperationResult result = plugin.getPersistentMetaHandler().parseAndExecuteMetaActionFromString(player, executable);
+                final PersistentMetaHandler.OperationResult result = plugin.getPersistentMetaHandler()
+                        .parseAndExecuteMetaActionFromString(player, executable);
                 switch (result) {
                     case INVALID_SYNTAX:
-                        plugin.debug(DebugLevel.HIGHEST, Level.INFO, "Invalid meta action! Make sure you have the right syntax.");
+                        plugin.debug(DebugLevel.HIGHEST, Level.INFO,
+                                "Invalid meta action! Make sure you have the right syntax.");
                         break;
                     case NEW_VALUE_IS_DIFFERENT_TYPE:
-                        plugin.debug(DebugLevel.HIGHEST, Level.INFO, "Invalid meta action! New value is a different type than the old value!");
+                        plugin.debug(DebugLevel.HIGHEST, Level.INFO,
+                                "Invalid meta action! New value is a different type than the old value!");
                         break;
                     case INVALID_TYPE:
-                        plugin.debug(DebugLevel.HIGHEST, Level.INFO, "Invalid meta action! The specified type is not supported for the specified action!");
+                        plugin.debug(DebugLevel.HIGHEST, Level.INFO,
+                                "Invalid meta action! The specified type is not supported for the specified action!");
                         break;
                     case EXISTENT_VALUE_IS_DIFFERENT_TYPE:
-                        plugin.debug(DebugLevel.HIGHEST, Level.INFO, "Invalid meta action! Existent value is a different type than the new value!");
+                        plugin.debug(DebugLevel.HIGHEST, Level.INFO,
+                                "Invalid meta action! Existent value is a different type than the new value!");
                         break;
                     case VALUE_NOT_FOUND:
                     case SUCCESS:
@@ -105,7 +109,11 @@ public class ClickActionTask implements Runnable {
                 break;
 
             case PLAYER:
-                player.performCommand(executable);
+                dispatchOnGlobalThread(() -> {
+                    if (player.isOnline()) {
+                        player.performCommand(executable);
+                    }
+                });
                 break;
             case PLAYER_COMMAND_EVENT:
                 player.chat("/" + executable);
@@ -120,7 +128,7 @@ public class ClickActionTask implements Runnable {
                 break;
 
             case CONSOLE:
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), executable);
+                dispatchOnGlobalThread(() -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), executable));
                 break;
 
             case MINI_MESSAGE:
@@ -160,11 +168,13 @@ public class ClickActionTask implements Runnable {
                         logLevel = Level.parse(logParts[0].toUpperCase());
                     } catch (IllegalArgumentException e) {
                         logLevel = Level.INFO;
-                        plugin.debug(DebugLevel.HIGHEST, Level.WARNING, "Log level " + logParts[0] + " is not a valid log level! Using INFO instead.");
+                        plugin.debug(DebugLevel.HIGHEST, Level.WARNING,
+                                "Log level " + logParts[0] + " is not a valid log level! Using INFO instead.");
                     }
                 }
 
-                plugin.getLogger().log(logLevel, String.format("[%s]: %s", holder.map(MenuHolder::getMenuName).orElse("Unknown Menu"), message));
+                plugin.getLogger().log(logLevel,
+                        String.format("[%s]: %s", holder.map(MenuHolder::getMenuName).orElse("Unknown Menu"), message));
                 break;
 
             case BROADCAST:
@@ -208,8 +218,8 @@ public class ClickActionTask implements Runnable {
                         plugin.debug(
                                 DebugLevel.HIGHEST,
                                 Level.WARNING,
-                                "Arguments were given for menu " + menuName + " in action [openguimenu] or [openmenu], but the menu does not support arguments!"
-                        );
+                                "Arguments were given for menu " + menuName
+                                        + " in action [openguimenu] or [openmenu], but the menu does not support arguments!");
                     }
 
                     if (holder.isEmpty()) {
@@ -222,7 +232,6 @@ public class ClickActionTask implements Runnable {
                 }
 
                 if (passedArgumentValues == null || passedArgumentValues.length == 0) {
-                    // Replicate old behavior: If no arguments are given, open the menu with the arguments from the current menu
                     if (holder.isEmpty()) {
                         menuToOpen.openMenu(player);
                         break;
@@ -236,15 +245,13 @@ public class ClickActionTask implements Runnable {
                     plugin.debug(
                             DebugLevel.HIGHEST,
                             Level.WARNING,
-                            "Not enough arguments given for menu " + menuName + " when opening using the [openguimenu] or [openmenu] action!"
-                    );
+                            "Not enough arguments given for menu " + menuName
+                                    + " when opening using the [openguimenu] or [openmenu] action!");
                     break;
                 }
 
                 final Map<String, String> argumentsMap = new HashMap<>();
                 if (holder.isPresent() && holder.get().getTypedArgs() != null) {
-                    // Pass the arguments from the current menu to the new menu. If the new menu has arguments with the
-                    // same name, they will be overwritten
                     argumentsMap.putAll(holder.get().getTypedArgs());
                 }
 
@@ -256,14 +263,15 @@ public class ClickActionTask implements Runnable {
                         plugin.debug(
                                 DebugLevel.HIGHEST,
                                 Level.WARNING,
-                                "Not enough arguments given for menu " + menuName + " when opening using the [openguimenu] or [openmenu] action!"
-                        );
+                                "Not enough arguments given for menu " + menuName
+                                        + " when opening using the [openguimenu] or [openmenu] action!");
                         break;
                     }
 
                     if (menuArgumentNames.size() == index + 1) {
                         // If this is the last argument, get all remaining values and join them
-                        final String lastArgumentValue = String.join(" ", Arrays.asList(passedArgumentValues).subList(index, passedArgumentValues.length));
+                        final String lastArgumentValue = String.join(" ",
+                                Arrays.asList(passedArgumentValues).subList(index, passedArgumentValues.length));
                         argumentsMap.put(argumentName, lastArgumentValue);
                         break;
                     }
@@ -297,8 +305,7 @@ public class ClickActionTask implements Runnable {
                     plugin.debug(
                             DebugLevel.MEDIUM,
                             Level.WARNING,
-                            player.getName() + " does not have menu open! Nothing to refresh!"
-                    );
+                            player.getName() + " does not have menu open! Nothing to refresh!");
                     break;
                 }
 
@@ -317,8 +324,7 @@ public class ClickActionTask implements Runnable {
                     plugin.debug(
                             DebugLevel.HIGHEST,
                             Level.WARNING,
-                            "Amount for take money action: " + executable + ", is not a valid number!"
-                    );
+                            "Amount for take money action: " + executable + ", is not a valid number!");
                 }
                 break;
 
@@ -334,8 +340,7 @@ public class ClickActionTask implements Runnable {
                     plugin.debug(
                             DebugLevel.HIGHEST,
                             Level.WARNING,
-                            "Amount for give money action: " + executable + ", is not a valid number!"
-                    );
+                            "Amount for give money action: " + executable + ", is not a valid number!");
                 }
                 break;
 
@@ -344,7 +349,8 @@ public class ClickActionTask implements Runnable {
                 final String lowerCaseExecutable = executable.toLowerCase();
 
                 try {
-                    if (Integer.parseInt(lowerCaseExecutable.replaceAll("l", "")) <= 0) break;
+                    if (Integer.parseInt(lowerCaseExecutable.replaceAll("l", "")) <= 0)
+                        break;
 
                     if (actionType == ActionType.TAKE_EXP) {
                         ExpUtils.setExp(player, "-" + lowerCaseExecutable);
@@ -359,16 +365,14 @@ public class ClickActionTask implements Runnable {
                         plugin.debug(
                                 DebugLevel.HIGHEST,
                                 Level.WARNING,
-                                "Amount for take exp action: " + executable + ", is not a valid number!"
-                        );
+                                "Amount for take exp action: " + executable + ", is not a valid number!");
                         break;
                     }
 
                     plugin.debug(
                             DebugLevel.HIGHEST,
                             Level.WARNING,
-                            "Amount for give exp action: " + executable + ", is not a valid number!"
-                    );
+                            "Amount for give exp action: " + executable + ", is not a valid number!");
                     break;
                 }
 
@@ -427,7 +431,8 @@ public class ClickActionTask implements Runnable {
                     plugin.debug(
                             DebugLevel.HIGHEST,
                             Level.WARNING,
-                            "Ephemeral cooldown '" + cooldownParts[0] + "' of " + cooldownSeconds + "s is longer than max_ephemeral_cooldown_seconds (" + maxCooldownSeconds + ")!",
+                            "Ephemeral cooldown '" + cooldownParts[0] + "' of " + cooldownSeconds
+                                    + "s is longer than max_ephemeral_cooldown_seconds (" + maxCooldownSeconds + ")!",
                             "Clamping it. Ephemeral cooldowns are lost on restart, so use a dedicated cooldown plugin for longer ones.");
                     cooldownSeconds = maxCooldownSeconds;
                 }
@@ -467,16 +472,13 @@ public class ClickActionTask implements Runnable {
                             plugin.debug(
                                     DebugLevel.HIGHEST,
                                     Level.WARNING,
-                                    "Pitch given for sound action: " + parts[2] + ", is not a valid number!"
-                            );
+                                    "Pitch given for sound action: " + parts[2] + ", is not a valid number!");
 
                             plugin.printStacktrace(
                                     "Pitch given for sound action: " + parts[2] + ", is not a valid number!",
-                                    exception
-                            );
+                                    exception);
                         }
                     }
-
 
                     try {
                         volume = Float.parseFloat(parts[1]);
@@ -484,13 +486,11 @@ public class ClickActionTask implements Runnable {
                         plugin.debug(
                                 DebugLevel.HIGHEST,
                                 Level.WARNING,
-                                "Volume given for sound action: " + parts[1] + ", is not a valid number!"
-                        );
+                                "Volume given for sound action: " + parts[1] + ", is not a valid number!");
 
                         plugin.printStacktrace(
                                 "Volume given for sound action: " + parts[1] + ", is not a valid number!",
-                                exception
-                        );
+                                exception);
                     }
                 }
 
@@ -502,18 +502,21 @@ public class ClickActionTask implements Runnable {
                 switch (actionType) {
                     case BROADCAST_WORLD_RAW_SOUND:
                         for (final Player broadcastTarget : player.getWorld().getPlayers()) {
-                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(), parsedSoundName, parsedVolume, parsedPitch));
+                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(),
+                                    parsedSoundName, parsedVolume, parsedPitch));
                         }
                         break;
 
                     case BROADCAST_RAW_SOUND:
                         for (final Player broadcastTarget : Bukkit.getOnlinePlayers()) {
-                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(), parsedSoundName, parsedVolume, parsedPitch));
+                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(),
+                                    parsedSoundName, parsedVolume, parsedPitch));
                         }
                         break;
 
                     case PLAY_RAW_SOUND:
-                        playSoundFor(player, listener -> listener.playSound(listener.getLocation(), parsedSoundName, parsedVolume, parsedPitch));
+                        playSoundFor(player, listener -> listener.playSound(listener.getLocation(), parsedSoundName,
+                                parsedVolume, parsedPitch));
                         break;
 
                     case BROADCAST_SOUND:
@@ -521,12 +524,12 @@ public class ClickActionTask implements Runnable {
                             plugin.debug(
                                     DebugLevel.HIGHEST,
                                     Level.WARNING,
-                                    "Sound name given for sound action: " + executable + ", is not a valid sound!"
-                            );
+                                    "Sound name given for sound action: " + executable + ", is not a valid sound!");
                             break;
                         }
                         for (final Player broadcastTarget : Bukkit.getOnlinePlayers()) {
-                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(), parsedSound, parsedVolume, parsedPitch));
+                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(),
+                                    parsedSound, parsedVolume, parsedPitch));
                         }
                         break;
 
@@ -535,12 +538,12 @@ public class ClickActionTask implements Runnable {
                             plugin.debug(
                                     DebugLevel.HIGHEST,
                                     Level.WARNING,
-                                    "Sound name given for sound action: " + executable + ", is not a valid sound!"
-                            );
+                                    "Sound name given for sound action: " + executable + ", is not a valid sound!");
                             break;
                         }
                         for (final Player broadcastTarget : player.getWorld().getPlayers()) {
-                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(), parsedSound, parsedVolume, parsedPitch));
+                            playSoundFor(broadcastTarget, listener -> listener.playSound(listener.getLocation(),
+                                    parsedSound, parsedVolume, parsedPitch));
                         }
                         break;
 
@@ -549,11 +552,11 @@ public class ClickActionTask implements Runnable {
                             plugin.debug(
                                     DebugLevel.HIGHEST,
                                     Level.WARNING,
-                                    "Sound name given for sound action: " + executable + ", is not a valid sound!"
-                            );
+                                    "Sound name given for sound action: " + executable + ", is not a valid sound!");
                             break;
                         }
-                        playSoundFor(player, listener -> listener.playSound(listener.getLocation(), parsedSound, parsedVolume, parsedPitch));
+                        playSoundFor(player, listener -> listener.playSound(listener.getLocation(), parsedSound,
+                                parsedVolume, parsedPitch));
                         break;
                 }
                 break;
@@ -561,6 +564,15 @@ public class ClickActionTask implements Runnable {
             default:
                 break;
         }
+    }
+
+    private void dispatchOnGlobalThread(@NotNull final Runnable dispatch) {
+        if (!DeluxeMenus.usesRegionScheduler() || DeluxeMenus.getScheduler().isGlobalThread()) {
+            dispatch.run();
+            return;
+        }
+
+        DeluxeMenus.getScheduler().runTask(dispatch);
     }
 
     private void playSoundFor(@NotNull final Player target, @NotNull final Consumer<Player> play) {
@@ -574,13 +586,13 @@ public class ClickActionTask implements Runnable {
     }
 
     private boolean isRaw(ActionType actionType) {
-        return actionType == ActionType.PLAY_RAW_SOUND || actionType == ActionType.BROADCAST_RAW_SOUND || actionType == ActionType.BROADCAST_WORLD_RAW_SOUND;
+        return actionType == ActionType.PLAY_RAW_SOUND || actionType == ActionType.BROADCAST_RAW_SOUND
+                || actionType == ActionType.BROADCAST_WORLD_RAW_SOUND;
     }
 
     /**
      * Parses an ephemeral cooldown duration into seconds.
      * <p>
-     * Accepts a plain number of seconds ({@code 30}, {@code 0.25}) or a number suffixed with
      * {@code s}, {@code m} or {@code h} ({@code 30s}, {@code 5m}, {@code 1h}).
      *
      * @return the duration in seconds, or null if it could not be parsed
