@@ -17,7 +17,7 @@ import com.extendedclip.deluxemenus.placeholder.Expansion;
 import com.extendedclip.deluxemenus.updatechecker.UpdateChecker;
 import com.extendedclip.deluxemenus.utils.DebugLevel;
 import com.extendedclip.deluxemenus.utils.Messages;
-import com.github.Anon8281.universalScheduler.UniversalScheduler;
+import com.extendedclip.deluxemenus.utils.SchedulerFactory;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
@@ -62,7 +62,7 @@ public class DeluxeMenus extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        scheduler = UniversalScheduler.getScheduler(this);
+        scheduler = SchedulerFactory.getScheduler(this);
 
         this.generalConfig.load();
 
@@ -112,7 +112,9 @@ public class DeluxeMenus extends JavaPlugin {
             scheduler = null;
         }
 
-        itemHooks.clear();
+        if (this.itemHooks != null) {
+            this.itemHooks.clear();
+        }
 
         HandlerList.unregisterAll(this);
     }
@@ -121,7 +123,7 @@ public class DeluxeMenus extends JavaPlugin {
      * Folia and Canvas run player and world work on region threads. Paper, Spigot, and Bukkit keep the main thread.
      */
     public static boolean usesRegionScheduler() {
-        return UniversalScheduler.isFolia || UniversalScheduler.isCanvas;
+        return SchedulerFactory.usesRegionScheduler();
     }
 
     public static @NotNull TaskScheduler getScheduler() {
