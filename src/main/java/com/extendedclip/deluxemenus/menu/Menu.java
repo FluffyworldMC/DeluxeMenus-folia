@@ -11,6 +11,7 @@ import com.extendedclip.deluxemenus.utils.StringUtils;
 
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 import net.kyori.adventure.text.Component;
@@ -24,9 +25,9 @@ import org.jetbrains.annotations.Nullable;
 
 public class Menu {
 
-    private static final Map<String, Menu> menus = new HashMap<>();
-    private static final Set<MenuHolder> menuHolders = new HashSet<>();
-    private static final Map<UUID, Menu> lastOpenedMenus = new HashMap<>();
+    private static final Map<String, Menu> menus = new ConcurrentHashMap<>();
+    private static final Set<MenuHolder> menuHolders = ConcurrentHashMap.newKeySet();
+    private static final Map<UUID, Menu> lastOpenedMenus = new ConcurrentHashMap<>();
 
     private final DeluxeMenus plugin;
     private final MenuOptions options;
@@ -216,7 +217,11 @@ public class Menu {
             });
         }
         menuHolders.remove(holder);
-        lastOpenedMenus.put(player.getUniqueId(), holder.getMenu().orElse(null));
+
+        holder.getMenu().ifPresentOrElse(
+                menu -> lastOpenedMenus.put(player.getUniqueId(), menu),
+                () -> lastOpenedMenus.remove(player.getUniqueId())
+        );
     }
 
     public static void closeMenuForShutdown(final @NotNull DeluxeMenus plugin, final @NotNull Player player) {

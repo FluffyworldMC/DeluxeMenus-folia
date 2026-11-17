@@ -29,6 +29,7 @@ import org.bstats.charts.SingleLineChart;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.inventory.ItemStack;
@@ -112,7 +113,9 @@ public class DeluxeMenus extends JavaPlugin {
             scheduler = null;
         }
 
-        itemHooks.clear();
+        if (itemHooks != null) {
+            itemHooks.clear();
+        }
 
         HandlerList.unregisterAll(this);
     }
@@ -126,6 +129,38 @@ public class DeluxeMenus extends JavaPlugin {
 
     public static @NotNull TaskScheduler getScheduler() {
         return scheduler;
+    }
+
+    /**
+     * Runs the task on the global tick thread.
+     * <p>
+     * Console commands must always be dispatched here. On Folia based servers a console sender is
+     * rejected when {@code dispatchCommand} is called from a region thread.
+     */
+    public static void runOnGlobalThread(@NotNull final Runnable task) {
+        final TaskScheduler currentScheduler = scheduler;
+        if (!usesRegionScheduler() || currentScheduler == null || currentScheduler.isGlobalThread()) {
+            task.run();
+            return;
+        }
+
+        currentScheduler.runTask(task);
+    }
+
+    /**
+     * Runs the task on the region that owns the entity.
+     * <p>
+     * Player commands and any other entity state must be handled here. The global region does not
+     * own players on Folia based servers.
+     */
+    public static void runOnEntityThread(@NotNull final Entity entity, @NotNull final Runnable task) {
+        final TaskScheduler currentScheduler = scheduler;
+        if (!usesRegionScheduler() || currentScheduler == null || currentScheduler.isEntityThread(entity)) {
+            task.run();
+            return;
+        }
+
+        currentScheduler.runTask(entity, task);
     }
 
     public Optional<ItemHook> getItemHook(String id) {

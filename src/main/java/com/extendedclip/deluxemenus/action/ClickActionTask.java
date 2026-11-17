@@ -110,7 +110,7 @@ public class ClickActionTask implements Runnable {
 
             case PLAYER:
                 // Canvas checks that the thread owns the player. The global region fails that check.
-                runOnEntityThread(player, () -> {
+                DeluxeMenus.runOnEntityThread(player, () -> {
                     if (player.isOnline()) {
                         player.performCommand(executable);
                     }
@@ -129,7 +129,8 @@ public class ClickActionTask implements Runnable {
                 break;
 
             case CONSOLE:
-                dispatchOnGlobalThread(() -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), executable));
+                // A console sender may only be dispatched from the global tick thread.
+                DeluxeMenus.runOnGlobalThread(() -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), executable));
                 break;
 
             case MINI_MESSAGE:
@@ -567,38 +568,8 @@ public class ClickActionTask implements Runnable {
         }
     }
 
-    /**
-     * Console dispatch must run on the global tick thread. A player sender is rejected there.
-     */
-    private void dispatchOnGlobalThread(@NotNull final Runnable dispatch) {
-        if (!DeluxeMenus.usesRegionScheduler() || DeluxeMenus.getScheduler().isGlobalThread()) {
-            dispatch.run();
-            return;
-        }
-
-        DeluxeMenus.getScheduler().runTask(dispatch);
-    }
-
-    /**
-     * Player command dispatch must run on the region that owns the player.
-     */
-    private void runOnEntityThread(@NotNull final Player target, @NotNull final Runnable task) {
-        if (!DeluxeMenus.usesRegionScheduler() || DeluxeMenus.getScheduler().isEntityThread(target)) {
-            task.run();
-            return;
-        }
-
-        DeluxeMenus.getScheduler().runTask(target, task);
-    }
-
     private void playSoundFor(@NotNull final Player target, @NotNull final Consumer<Player> play) {
-        final Runnable task = () -> play.accept(target);
-        if (DeluxeMenus.getScheduler().isEntityThread(target)) {
-            task.run();
-            return;
-        }
-
-        DeluxeMenus.getScheduler().runTask(target, task);
+        DeluxeMenus.runOnEntityThread(target, () -> play.accept(target));
     }
 
     private boolean isRaw(ActionType actionType) {

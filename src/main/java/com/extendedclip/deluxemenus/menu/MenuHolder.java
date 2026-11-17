@@ -27,10 +27,10 @@ public class MenuHolder implements InventoryHolder {
     private Player placeholderPlayer;
     private String menuName;
     private Set<MenuItem> activeItems;
-    private MyScheduledTask updateTask = null;
-    private MyScheduledTask refreshTask = null;
+    private volatile MyScheduledTask updateTask = null;
+    private volatile MyScheduledTask refreshTask = null;
     private Inventory inventory;
-    private boolean updating;
+    private volatile boolean updating;
     private boolean parsePlaceholdersInArguments;
     private boolean parsePlaceholdersAfterArguments;
     private Map<String, String> typedArgs;

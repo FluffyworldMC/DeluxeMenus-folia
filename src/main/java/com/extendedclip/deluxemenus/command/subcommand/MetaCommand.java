@@ -67,6 +67,17 @@ public class MetaCommand extends SubCommand {
             return;
         }
 
+        final List<String> targetArguments = List.copyOf(arguments);
+
+        // Persistent metadata belongs to the player, so only the region that owns them may touch it.
+        DeluxeMenus.runOnEntityThread(target, () -> executeForTarget(sender, target, targetArguments));
+    }
+
+    /**
+     * Handles the metadata action on the region that owns the target player.
+     */
+    private void executeForTarget(final @NotNull CommandSender sender, final @NotNull Player target,
+                                  final @NotNull List<String> arguments) {
         final String actionName = StringUtils.replacePlaceholders(arguments.get(1), target);
         final DataAction action = DataAction.getActionByName(actionName);
 
