@@ -7,8 +7,8 @@ plugins {
 // Change to true when releasing
 val release = false
 val majorVersion = "1.14.2"
-val buildNumber = System.getenv("BUILD_NUMBER") ?: "local"
-val minorVersion = if (release) "Release" else "DEV-$buildNumber"
+val buildNumber = System.getenv("BUILD_NUMBER")
+val minorVersion = if (release) "Release" else if (buildNumber.isNullOrBlank()) "DEV" else "DEV-$buildNumber"
 
 group = "com.extendedclip"
 version = "$majorVersion-$minorVersion"
